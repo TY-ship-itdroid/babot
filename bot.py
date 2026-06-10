@@ -1,3 +1,4 @@
+import anthropic
 import os
 import discord
 import asyncio
@@ -73,5 +74,18 @@ async def on_message(message):
         for event in events[:5]:
             message_text += f'・{event}\n'
         await message.channel.send(message_text)
+    if message.content.startswith('!聞く '):
+        question = message.content[4:]
+        async with message.channel.typing():
+            claude = anthropic.Anthropic(api_key=os.environ['ANTHROPIC_API_KEY'])
+            response = claude.messages.create(
+                model='claude-haiku-4-5-20251001',
+                max_tokens=1000,
+                system='あなたはブルーアーカイブのサークルDiscordサーバーのアシスタントBotです。ブルアカに関する質問に日本語で答えてください。',
+                messages=[
+                    {'role': 'user', 'content': question}
+                ]
+            )
+            await message.channel.send(response.content[0].text)
 
 client.run(os.environ['DISCORD_TOKEN'])
