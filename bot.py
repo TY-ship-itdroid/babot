@@ -50,16 +50,16 @@ async def event_notification():
     await client.wait_until_ready()
     channel = client.get_channel(1513838887758463059)
     while not client.is_closed():
-        now = datetime.now()
-        # 毎日12:00に通知
-        if now.hour == 12 and now.minute == 0:
+        now = datetime.utcnow()  # UTCに変更
+        # 日本時間12時 = UTC 3時
+        if now.hour == 3 and now.minute == 0:
             events = get_events()
             if events:
                 message = '**【ブルアカ イベント一覧】**\n'
                 for event in events:
                     message += f'・{event}\n'
                 await channel.send(message)
-            await asyncio.sleep(60)  # 1分待って二重送信防止
+            await asyncio.sleep(60) # 1分待って二重送信防止
         else:
             await asyncio.sleep(300)  # 5分ごとに時刻チェック
 
