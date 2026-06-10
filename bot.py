@@ -51,6 +51,7 @@ async def event_notification():
     channel = client.get_channel(1513838887758463059)
     while not client.is_closed():
         now = datetime.utcnow()  # UTCに変更
+        print(f'現在のUTC時刻: {now.hour}:{now.minute}')  # 追加
         # 日本時間12時 = UTC 3時
         if now.hour == 11 and now.minute == 48:
             events = get_events()
