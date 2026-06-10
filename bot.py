@@ -77,7 +77,7 @@ async def on_message(message):
             message_text += f'・{event}\n'
         await message.channel.send(message_text)
     if message.content.startswith('!聞く ') or message.content.startswith('!聞く\u3000'):
-    question = message.content[4:].strip()
+        question = message.content[4:].strip()
         async with message.channel.typing():
             claude = anthropic.Anthropic(api_key=os.environ['ANTHROPIC_API_KEY'])
             response = claude.messages.create(
