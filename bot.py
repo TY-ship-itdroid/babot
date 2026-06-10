@@ -11,8 +11,6 @@ intents.message_content = True
 
 client = discord.Client(intents=intents)
 
-import re
-
 def get_events():
     url = 'https://bluearchive.wikiru.jp/?イベント'
     response = requests.get(url)
@@ -52,7 +50,7 @@ async def event_notification():
     while not client.is_closed():
         now = datetime.utcnow()  # UTCに変更
         # 日本時間12時 = UTC 3時
-        if now.hour == 12 and now.minute == 00:
+        if now.hour == 3 and now.minute == 0:
             events = get_events()
             if events:
                 message = '**【ブルアカ イベント一覧】**\n'
