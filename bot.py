@@ -56,7 +56,7 @@ async def event_notification():
         now = datetime.now(timezone.utc)  # UTCに変更
         print(f'UTC時刻: {now.hour}:{now.minute}') 
         # 日本時間12時 = UTC 3時
-        if now.hour == 3 and now.minute == 0:
+        if now.hour == 12 and now.minute == 50:
             events = get_events()
             message = '**【ブルアカ イベント一覧】**\n'
             if events:
@@ -64,7 +64,7 @@ async def event_notification():
                      message += f'・{event}\n'
             else:
                  message += '現在開催中のイベントはありません'
-            await message.channel.send(message_text)
+            await channel.send(message)
             await asyncio.sleep(60) # 1分待って二重送信防止
         else:
             await asyncio.sleep(30)  # 30秒ごとに時刻チェック
@@ -82,7 +82,7 @@ async def on_message(message):
             message_text += f'・{event}\n'
         await message.channel.send(message_text)
     elif message.content.startswith('!聞く ') or message.content.startswith('!聞く\u3000'):
-        uestion = message.content[4:].strip()
+        question = message.content[4:].strip()
         async with message.channel.typing():
             claude = anthropic.Anthropic(api_key=os.environ['ANTHROPIC_API_KEY'])
             response = claude.messages.create(
