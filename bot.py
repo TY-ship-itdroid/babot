@@ -23,8 +23,6 @@ def get_events():
         response.encoding = 'utf-8'
         soup = BeautifulSoup(response.text, 'html.parser')
         tables = soup.find_all('table')
-    if len(tables) < 2: 
-        return []
     text = tables[1].get_text().strip()
     lines = [line.strip() for line in text.splitlines() if line.strip()]
     events = lines[1:]
