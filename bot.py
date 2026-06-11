@@ -58,10 +58,12 @@ async def event_notification():
         # 日本時間12時 = UTC 3時
         if now.hour == 12 and now.minute == 50:
             events = get_events()
-            if events:
-                message = '**【ブルアカ イベント一覧】**\n'
-                for event in events:
-                    message += f'・{event}\n'
+            message = '**【ブルアカ イベント一覧】**\n'
+                if events:
+                    for event in events:
+                        message += f'・{event}\n'
+                else:
+                    message += '現在開催中のイベントはありません'
                 await channel.send(message)
             await asyncio.sleep(60) # 1分待って二重送信防止
         else:
