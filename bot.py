@@ -56,7 +56,7 @@ async def event_notification():
         now = datetime.now(timezone.utc)  # UTCに変更
         print(f'UTC時刻: {now.hour}:{now.minute}') 
         # 日本時間12時 = UTC 3時
-        if now.hour == 12 and now.minute == 15:
+        if now.hour == 12 and now.minute == 50:
             events = get_events()
             if events:
                 message = '**【ブルアカ イベント一覧】**\n'
