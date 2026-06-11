@@ -17,12 +17,11 @@ intents.message_content = True
 client = discord.Client(intents=intents)
 
 def get_events():
-    try:
-        url = 'https://bluearchive.wikiru.jp/?イベント'
-        response = requests.get(url, timeout=10)
-        response.encoding = 'utf-8'
-        soup = BeautifulSoup(response.text, 'html.parser')
-        tables = soup.find_all('table')
+    url = 'https://bluearchive.wikiru.jp/?イベント'
+    response = requests.get(url)
+    response.encoding = 'utf-8'
+    soup = BeautifulSoup(response.text, 'html.parser')
+     tables = soup.find_all('table')
     text = tables[1].get_text().strip()
     lines = [line.strip() for line in text.splitlines() if line.strip()]
     events = lines[1:]
