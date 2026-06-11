@@ -53,7 +53,7 @@ async def event_notification():
     while not client.is_closed():
         now = datetime.utcnow()  # UTCに変更
         # 日本時間12時 = UTC 3時
-        if now.hour == 3 and now.minute == 0:
+        if now.hour == 11 and now.minute == 54:
             events = get_events()
             if events:
                 message = '**【ブルアカ イベント一覧】**\n'
@@ -63,7 +63,7 @@ async def event_notification():
             await asyncio.sleep(60) # 1分待って二重送信防止
         else:
             await asyncio.sleep(300)  # 5分ごとに時刻チェック
-            
+
 @client.event
 async def on_message(message):
     if message.author == client.user:
