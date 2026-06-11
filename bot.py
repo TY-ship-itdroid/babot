@@ -81,11 +81,8 @@ async def on_message(message):
         for event in events:
             message_text += f'・{event}\n'
         await message.channel.send(message_text)
-    elif message.content.startswith('!聞く'):
-        uestion = message.content[3:].strip()
-        if not question:
-            await message.channel.send('質問を入力してください。例: `!聞く 総力戦のコツは？`')
-            return
+    elif message.content.startswith('!聞く ') or message.content.startswith('!聞く\u3000'):
+        uestion = message.content[4:].strip()
         async with message.channel.typing():
             claude = anthropic.Anthropic(api_key=os.environ['ANTHROPIC_API_KEY'])
             response = claude.messages.create(
