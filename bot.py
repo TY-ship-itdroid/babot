@@ -1,3 +1,5 @@
+import sys
+sys.stdout.reconfigure(line_buffering=True)
 import os
 from dotenv import load_dotenv
 load_dotenv()
