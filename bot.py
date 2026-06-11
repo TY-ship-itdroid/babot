@@ -17,11 +17,14 @@ intents.message_content = True
 client = discord.Client(intents=intents)
 
 def get_events():
-    url = 'https://bluearchive.wikiru.jp/?イベント'
-    response = requests.get(url)
-    response.encoding = 'utf-8'
-    soup = BeautifulSoup(response.text, 'html.parser')
-    tables = soup.find_all('table')
+    try:
+        url = 'https://bluearchive.wikiru.jp/?イベント'
+        response = requests.get(url, timeout=10)
+        response.encoding = 'utf-8'
+        soup = BeautifulSoup(response.text, 'html.parser')
+        tables = soup.find_all('table')
+    if len(tables) < 2: 
+        return []
     text = tables[1].get_text().strip()
     lines = [line.strip() for line in text.splitlines() if line.strip()]
     events = lines[1:]
@@ -56,7 +59,7 @@ async def event_notification():
         now = datetime.now(timezone.utc)  # UTCに変更
         print(f'UTC時刻: {now.hour}:{now.minute}') 
         # 日本時間12時 = UTC 3時
-        if now.hour == 12 and now.minute == 50:
+        if now.hour == 3 and now.minute == 0:
             events = get_events()
             message = '**【ブルアカ イベント一覧】**\n'
             if events:
@@ -64,7 +67,7 @@ async def event_notification():
                      message += f'・{event}\n'
             else:
                  message += '現在開催中のイベントはありません'
-            await channel.send(message)
+            await message.channel.send(message_text)
             await asyncio.sleep(60) # 1分待って二重送信防止
         else:
             await asyncio.sleep(30)  # 30秒ごとに時刻チェック
@@ -81,8 +84,11 @@ async def on_message(message):
         for event in events:
             message_text += f'・{event}\n'
         await message.channel.send(message_text)
-    elif message.content.startswith('!聞く ') or message.content.startswith('!聞く\u3000'):
-        question = message.content[4:].strip()
+    elif message.content.startswith('!聞く'):
+        uestion = message.content[3:].strip()
+        if not question:
+            await message.channel.send('質問を入力してください。例: `!聞く 総力戦のコツは？`')
+            return
         async with message.channel.typing():
             claude = anthropic.Anthropic(api_key=os.environ['ANTHROPIC_API_KEY'])
             response = claude.messages.create(
