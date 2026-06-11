@@ -21,7 +21,7 @@ def get_events():
     response = requests.get(url)
     response.encoding = 'utf-8'
     soup = BeautifulSoup(response.text, 'html.parser')
-     tables = soup.find_all('table')
+    tables = soup.find_all('table')
     text = tables[1].get_text().strip()
     lines = [line.strip() for line in text.splitlines() if line.strip()]
     events = lines[1:]
