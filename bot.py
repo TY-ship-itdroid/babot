@@ -63,20 +63,20 @@ async def event_notification():
             await asyncio.sleep(60) # 1分待って二重送信防止
         else:
             await asyncio.sleep(300)  # 5分ごとに時刻チェック
-
+            
 @client.event
 async def on_message(message):
     if message.author == client.user:
         return
     if message.content == '!ping':
         await message.channel.send('pong!')
-    if message.content == '!イベント':
+    elif message.content == '!イベント':
         events = get_events()
         message_text = '**【ブルアカ イベント一覧】**\n'
-        for event in events[:5]:
+        for event in events:
             message_text += f'・{event}\n'
         await message.channel.send(message_text)
-    if message.content.startswith('!聞く ') or message.content.startswith('!聞く\u3000'):
+    elif message.content.startswith('!聞く ') or message.content.startswith('!聞く\u3000'):
         question = message.content[4:].strip()
         async with message.channel.typing():
             claude = anthropic.Anthropic(api_key=os.environ['ANTHROPIC_API_KEY'])
