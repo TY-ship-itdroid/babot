@@ -7,7 +7,7 @@ import asyncio
 import requests
 import re
 from bs4 import BeautifulSoup
-from datetime import datetime
+from datetime import datetime, timezone
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -51,7 +51,8 @@ async def event_notification():
     await client.wait_until_ready()
     channel = client.get_channel(1513838887758463059)
     while not client.is_closed():
-        now = datetime.utcnow()  # UTCに変更
+        from datetime import timezone
+        now = datetime.now(timezone.utc)  # UTCに変更
         print(f'UTC時刻: {now.hour}:{now.minute}')  # 追加
         # 日本時間12時 = UTC 3時
         if now.hour == 12 and now.minute == 15:
