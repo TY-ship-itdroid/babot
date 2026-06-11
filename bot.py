@@ -45,7 +45,7 @@ def get_events():
 @client.event
 async def on_ready():
     print(f'{client.user} が起動しました！')
-    client.loop.create_task(event_notification())
+    asyncio.ensure_future(event_notification())
 
 async def event_notification():
     await client.wait_until_ready()
