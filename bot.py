@@ -63,7 +63,7 @@ async def event_notification():
                 await channel.send(message)
             await asyncio.sleep(60) # 1分待って二重送信防止
         else:
-            await asyncio.sleep(300)  # 5分ごとに時刻チェック
+            await asyncio.sleep(30)  # 30秒ごとに時刻チェック
 
 @client.event
 async def on_message(message):
