@@ -115,6 +115,11 @@ async def on_message(message):
                 item.text for item in response.content
                 if hasattr(item, 'text')
             )
+            # ・の後の余計な改行を削除
+            fullResponse = re.sub(r'・\n+', '・', fullResponse)
+            # 3行以上の空白行を1行にまとめる
+            fullResponse = re.sub(r'\n{3,}', '\n\n', fullResponse)
+
             print(fullResponse)
             await message.channel.send(fullResponse)
 
