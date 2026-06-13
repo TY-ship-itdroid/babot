@@ -77,6 +77,30 @@ async def event_notification():
                  message += '現在開催中のイベントはありません'
             await channel.send(message)
             await asyncio.sleep(60) # 1分待って二重送信防止
+        # 日本時間9時 = UTC 0時　→　リマインド
+        elif now.hour == 0 and now.minute == 0:
+            events = get_events()
+            reminders = []
+            today = datetime.now(timezone.utc)
+            for event in events:
+                # イベント名から終了日を取り出す（例：～6/24）
+                match = re.search(r'～(\d+)/(\d+)', event)
+                if match:
+                    end_month = int(match.group(1))
+                    end_day = int(match.group(2))
+                    end_date = datetime(today.year, end_month, end_day, tzinfo=timezone.utc)
+                    days_left = (end_date - today).days
+                    if days_left == 1:
+                        reminders.append(f'⚠️ {event}　**明日終了！**')
+                    elif days_left == 2:
+                        reminders.append(f'📢 {event}　**あと2日！**')
+            if reminders:
+                message = '**【ブルアカ イベント終了リマインド】**\n'
+                for r in reminders:
+                    message += f'・{r}\n'
+                await channel.send(message)
+            await asyncio.sleep(60)
+
         else:
             await asyncio.sleep(300)  # 300秒ごとに時刻チェック
 
