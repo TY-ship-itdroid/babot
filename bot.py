@@ -29,7 +29,7 @@ def get_events():
     # 全テーブルの中身を確認
     for i, table in enumerate(tables):
         print(f'\n=== テーブル {i} ===')
-        print(table.get_text().strip()[:200])  # 最初の200文字だけ表示
+        print(table.get_text().strip()[:1000])  # 最初の200文字だけ表示
 
     text = tables[1].get_text().strip()
     lines = [line.strip() for line in text.splitlines() if line.strip()]
