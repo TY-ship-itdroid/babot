@@ -31,6 +31,10 @@ def get_events():
     event_name = None
 
     for line in lines:
+        # 過去のイベントが出てきたら終了！
+        if '過去のイベント' in line:
+            break
+
         match = re.search(r'～\s*(\d+)/(\d+)', line)
         if match and event_name:
             end_month = int(match.group(1))
@@ -45,7 +49,6 @@ def get_events():
         else:
             event_name = line
 
-    # ここに追加！関数の中でeventを確認
     print(f'イベント件数: {len(current_events)}')
     for event in current_events:
         print(event)
