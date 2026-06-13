@@ -100,7 +100,8 @@ async def on_message(message):
                 model='claude-haiku-4-5-20251001',
                 max_tokens=1000,
                 system='あなたはブルーアーカイブのサークルDiscordサーバーのアシスタントBotです。ブルアカに関する質問に答えてください。必ずweb検索で最新情報を調べてから答えてください。キャラ名は必ず正確に検索し、似た名前のキャラと混同しないよう注意してください。知らないことや不確かなことは「わかりません」と答えてください。回答はDiscordのチャット向けにシンプルな形式で書いてください。箇条書きは「・」を使い、見出しは「**〇〇**」の形式にしてください。'
-                    {'role': 'user', 'content': question}
+                messages=[
+                     {'role': 'user', 'content': question}
                 ],
                 tools=[
                 { 
