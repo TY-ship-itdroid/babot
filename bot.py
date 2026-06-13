@@ -30,6 +30,9 @@ def get_events():
     current_events = []
     event_name = None
 
+    print(f'イベント件数: {len(events)}')
+        for event in events:
+    print(event)
     for line in lines:
         # 日付行を探す（例：(2026/6/10 メンテ後 ～ 6/24 10:59)）
         match = re.search(r'～\s*(\d+)/(\d+)', line)
