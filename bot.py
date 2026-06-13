@@ -23,35 +23,30 @@ def get_events():
     soup = BeautifulSoup(response.text, 'html.parser')
     tables = soup.find_all('table')
 
-     # ここを追加！何個テーブルがあるか確認
-    print(f'テーブルの数: {len(tables)}')
-    
-    # テーブル0だけ詳しく見る
-    for i, table in enumerate(tables):
-        if i == 0:  # 0番だけ表示
-            print(f'\n=== テーブル {i} ===')
-            print(table.get_text().strip()[:2000])  # 2000文字に増やす
-
-    text = tables[1].get_text().strip()
+    text = tables[0].get_text().strip()
     lines = [line.strip() for line in text.splitlines() if line.strip()]
-    events = lines[1:]
-    
+
     today = datetime.now()
     current_events = []
-    
-    for event in events:
-        try:
-            # 末尾の MM/DD を取得
-            match = re.search(r'(\d{2})/(\d{2})\s*$', event)
-            if match:
-                end_month = int(match.group(1))
-                end_day = int(match.group(2))
+    event_name = None
+
+    for line in lines:
+        # 日付行を探す（例：(2026/6/10 メンテ後 ～ 6/24 10:59)）
+        match = re.search(r'～\s*(\d+)/(\d+)', line)
+        if match and event_name:
+            end_month = int(match.group(1))
+            end_day = int(match.group(2))
+            try:
                 end_date = datetime(today.year, end_month, end_day)
                 if end_date >= datetime(today.year, today.month, today.day):
-                    current_events.append(event)
-        except:
-            continue
-    
+                    current_events.append(f'{event_name}（～{end_month}/{end_day}）')
+            except:
+                pass
+            event_name = None
+        else:
+            # イベント名の行として記憶しておく
+            event_name = line
+
     return current_events
 
 @client.event
