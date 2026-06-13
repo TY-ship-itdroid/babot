@@ -26,11 +26,11 @@ def get_events():
      # ここを追加！何個テーブルがあるか確認
     print(f'テーブルの数: {len(tables)}')
     
-    # テーブル50以降だけ詳しく見る
+    # テーブル0だけ詳しく見る
     for i, table in enumerate(tables):
-        if i >= 50:  # 50番以降だけ表示
+        if i == 0:  # 0番だけ表示
             print(f'\n=== テーブル {i} ===')
-            print(table.get_text().strip()[:1000])
+            print(table.get_text().strip()[:2000])  # 2000文字に増やす
 
     text = tables[1].get_text().strip()
     lines = [line.strip() for line in text.splitlines() if line.strip()]
