@@ -93,6 +93,7 @@ async def on_message(message):
             message_text += f'・{event}\n'
         await message.channel.send(message_text)
     elif message.content.startswith('!聞く ') or message.content.startswith('!聞く\u3000'):
+        question = message.content[4:].strip()
         enhanced_question = f'{question}　※キャラ名が含まれる場合は正式名称で検索し、似た名前のキャラと混同しないでください。'
         async with message.channel.typing():
             claude = anthropic.Anthropic(api_key=os.environ['ANTHROPIC_API_KEY'])
