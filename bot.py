@@ -99,11 +99,21 @@ async def on_message(message):
             response = claude.messages.create(
                 model='claude-haiku-4-5-20251001',
                 max_tokens=1000,
-                system='あなたはブルーアーカイブのサークルDiscordサーバーのアシスタントBotです。ブルアカに関する質問に日本語で答えてください。',
+                system='あなたはブルーアーカイブのサークルDiscordサーバーのアシスタントBotです。ブルアカに関する質問に日本語で答えてください。必ず最新情報をweb検索で調べてから答えてください。知らないことや不確かなことは「わかりません」と答えてください。',
                 messages=[
                     {'role': 'user', 'content': question}
-                ]
+                ],
+                tools=[
+                { 
+                    'type': 'web_search_20250305',
+                    'name': 'web_search'
+                }
+            ]
+        )
+            fullResponse = '\n'.join(
+                item.text for item in response.content 
+                 if hasattr(item, 'text')
             )
-            await message.channel.send(response.content[0].text)
-
+            await message.channel.send(fullResponse)
+            
 client.run(os.environ['DISCORD_TOKEN'])
