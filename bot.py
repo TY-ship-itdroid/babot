@@ -93,7 +93,7 @@ async def on_message(message):
             message_text += f'・{event}\n'
         await message.channel.send(message_text)
     elif message.content.startswith('!聞く ') or message.content.startswith('!聞く\u3000'):
-        question = message.content[4:].strip()
+        enhanced_question = f'{question}　※キャラ名が含まれる場合は正式名称で検索し、似た名前のキャラと混同しないでください。'
         async with message.channel.typing():
             claude = anthropic.Anthropic(api_key=os.environ['ANTHROPIC_API_KEY'])
             response = claude.messages.create(
@@ -101,7 +101,7 @@ async def on_message(message):
                 max_tokens=1000,
                 system='あなたはブルーアーカイブのサークルDiscordサーバーのアシスタントBotです。ブルアカに関する質問に答えてください。必ずweb検索で最新情報を調べてから答えてください。キャラ名は必ず正確に検索し、似た名前のキャラと混同しないよう注意してください。知らないことや不確かなことは「わかりません」と答えてください。回答はDiscordのチャット向けにシンプルな形式で書いてください。箇条書きは「・」を使い、見出しは「**〇〇**」の形式にしてください。',
                 messages=[
-                    {'role': 'user', 'content': question}
+                    {'role': 'user', 'content': enhanced_question}
                 ],
                 tools=[
                     {
@@ -114,6 +114,7 @@ async def on_message(message):
                 item.text for item in response.content
                 if hasattr(item, 'text')
             )
+            print(fullResponse)  # これを追加！
             await message.channel.send(fullResponse)
 
 client.run(os.environ['DISCORD_TOKEN'])
