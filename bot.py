@@ -31,8 +31,8 @@ def get_events():
     event_name = None
 
     for line in lines:
-        # 過去のイベントが出てきたら終了！
-        if '過去のイベント' in line:
+        # 最新かつ開催中のイベントのみピックアップ
+        if '過去のイベント' in line or '開催予定のイベント' in line:
             break
 
         match = re.search(r'～\s*(\d+)/(\d+)', line)
