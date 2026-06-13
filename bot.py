@@ -92,7 +92,7 @@ async def on_message(message):
         for event in events:
             message_text += f'・{event}\n'
         await message.channel.send(message_text)
-   elif message.content.startswith('!聞く ') or message.content.startswith('!聞く\u3000'):
+    elif message.content.startswith('!聞く ') or message.content.startswith('!聞く\u3000'):
         question = message.content[4:].strip()
         enhanced_question = f'「{question}」※キャラ名は完全一致で検索すること。例えば「水着ナグサ」と「水着ナギサ」は別キャラなので混同しないこと。'
         async with message.channel.typing():
