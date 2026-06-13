@@ -93,8 +93,10 @@ async def on_message(message):
             message_text += f'・{event}\n'
         await message.channel.send(message_text)
     elif message.content.startswith('!聞く ') or message.content.startswith('!聞く\u3000'):
+        print(f'受け取った入力: {repr(message.content)}')  # ←これ追加！
         question = message.content[4:].strip()
         question = question.replace('(', '（').replace(')', '）')
+        print(f'変換前のquestion: {repr(question)}')  # ←これも追加！
         format_claude = anthropic.Anthropic(api_key=os.environ['ANTHROPIC_API_KEY'])
         format_response = format_claude.messages.create(
             model='claude-haiku-4-5-20251001',
