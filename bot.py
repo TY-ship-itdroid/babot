@@ -22,6 +22,15 @@ def get_events():
     response.encoding = 'utf-8'
     soup = BeautifulSoup(response.text, 'html.parser')
     tables = soup.find_all('table')
+
+     # ここを追加！何個テーブルがあるか確認
+    print(f'テーブルの数: {len(tables)}')
+    
+    # 全テーブルの中身を確認
+    for i, table in enumerate(tables):
+        print(f'\n=== テーブル {i} ===')
+        print(table.get_text().strip()[:200])  # 最初の200文字だけ表示
+
     text = tables[1].get_text().strip()
     lines = [line.strip() for line in text.splitlines() if line.strip()]
     events = lines[1:]
@@ -56,7 +65,7 @@ async def event_notification():
         now = datetime.now(timezone.utc)  # UTCに変更
         print(f'UTC時刻: {now.hour}:{now.minute}') 
         # 日本時間12時 = UTC 3時
-        if now.hour == 12 and now.minute == 50:
+        if now.hour == 3 and now.minute == 00:
             events = get_events()
             message = '**【ブルアカ イベント一覧】**\n'
             if events:
