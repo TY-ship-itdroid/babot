@@ -30,11 +30,7 @@ def get_events():
     current_events = []
     event_name = None
 
-    print(f'イベント件数: {len(events)}')
-        for event in events:
-    print(event)
     for line in lines:
-        # 日付行を探す（例：(2026/6/10 メンテ後 ～ 6/24 10:59)）
         match = re.search(r'～\s*(\d+)/(\d+)', line)
         if match and event_name:
             end_month = int(match.group(1))
@@ -47,8 +43,12 @@ def get_events():
                 pass
             event_name = None
         else:
-            # イベント名の行として記憶しておく
             event_name = line
+
+    # ここに追加！関数の中でeventを確認
+    print(f'イベント件数: {len(current_events)}')
+    for event in current_events:
+        print(event)
 
     return current_events
 
