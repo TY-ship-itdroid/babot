@@ -94,6 +94,18 @@ async def on_message(message):
         await message.channel.send(message_text)
     elif message.content.startswith('!聞く ') or message.content.startswith('!聞く\u3000'):
         question = message.content[4:].strip()
+        question = question.replace('(', '（').replace(')', '）')
+        format_claude = anthropic.Anthropic(api_key=os.environ['ANTHROPIC_API_KEY'])
+        format_response = format_claude.messages.create(
+            model='claude-haiku-4-5-20251001',
+            max_tokens=100,
+            system='ブルーアーカイブのキャラ名を正式名称に変換してください。入力が「衣装名+キャラ名」の形式なら「キャラ名（衣装名）」に変換してください。例：水着ナグサ→ナグサ（水着）、私服ホシノ→ホシノ（私服）、アイドルコハル→コハル（アイドル）。変換後の名前だけを返してください。変換不要な場合はそのまま返してください。',
+            messages=[
+                {'role': 'user', 'content': question}
+            ]
+        )
+        question = format_response.content[0].text.strip()
+        print(f'変換後のキャラ名: {question}')
         enhanced_question = f'「{question}」※キャラ名は完全一致で検索すること。例えば「水着ナグサ」と「水着ナギサ」は別キャラなので混同しないこと。'
         async with message.channel.typing():
             claude = anthropic.Anthropic(api_key=os.environ['ANTHROPIC_API_KEY'])
@@ -115,11 +127,8 @@ async def on_message(message):
                 item.text for item in response.content
                 if hasattr(item, 'text')
             )
-            # ・の後の余計な改行を削除
             fullResponse = re.sub(r'・\n+', '・', fullResponse)
-            # 3行以上の空白行を1行にまとめる
             fullResponse = re.sub(r'\n{3,}', '\n\n', fullResponse)
-
             print(fullResponse)
             await message.channel.send(fullResponse)
 
