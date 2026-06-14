@@ -12,6 +12,8 @@ from bs4 import BeautifulSoup
 from datetime import datetime, timezone
 
 intents = discord.Intents.default()
+TARGET_ROLE_ID = 1515595788045127700
+message_counts = {}  # {ユーザー名: 件数} を記録する辞書
 intents.message_content = True
 
 client = discord.Client(intents=intents)
@@ -100,7 +102,17 @@ async def event_notification():
                     message += f'・{r}\n'
                 await channel.send(message)
             await asyncio.sleep(60)
-
+         # 月初0時（日本時間9時）に集計送信
+        elif now.day == 1 and now.hour == 0 and now.minute == 0:
+            if message_counts:
+                msg = '**【今月の書き込み件数ランキング】**\n'
+                for name, count in message_counts.items():
+                    msg += f'・{name}：{count}件\n'
+            else:
+                msg = '今月は対象ロールの書き込みがありませんでした'
+            await channel.send(msg)
+            message_counts.clear()
+            await asyncio.sleep(60)
         else:
             await asyncio.sleep(300)  # 300秒ごとに時刻チェック
 
@@ -108,6 +120,12 @@ async def event_notification():
 async def on_message(message):
     if message.author == client.user:
         return
+    # 特定ロールを持つユーザーのメッセージをカウント
+    if hasattr(message.author, 'roles'):
+        role_ids = [role.id for role in message.author.roles]
+        if TARGET_ROLE_ID in role_ids:
+            name = message.author.display_name
+            message_counts[name] = message_counts.get(name, 0) + 1
     if message.content == '!ping':
         await message.channel.send('pong!')
     elif message.content == '!イベント':
