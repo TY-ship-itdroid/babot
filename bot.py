@@ -181,6 +181,15 @@ async def on_message(message):
             await message.channel.send(f'集計対象ロールを「{role.name}」に設定しました！')
         else:
             await message.channel.send('ロールをメンションして指定してください（例：!設定 集計ロール @メンバー）')
+    
+    elif message.content == '!ランキング確認':
+    if message_counts:
+        msg = '**【現在の書き込み件数（今月分）】**\n'
+        for name, count in message_counts.items():
+            msg += f'・{name}：{count}件\n'
+    else:
+        msg = '現在、対象ロールの書き込みはありません'
+    await message.channel.send(msg)
 
     elif message.content == '!イベント':
         events = get_events()
