@@ -27,7 +27,7 @@ from bs4 import BeautifulSoup
 from datetime import datetime, timezone
 
 intents = discord.Intents.default()
-TARGET_ROLE_ID = 1515595788045127700
+TARGET_ROLE_ID = 1282666189243416669
 message_counts = {}  # {ユーザー名: 件数} を記録する辞書
 intents.message_content = True
 
