@@ -4,6 +4,21 @@ import os
 from dotenv import load_dotenv
 load_dotenv()
 import discord
+import json
+
+CONFIG_FILE = 'config.json'
+
+def load_config():
+    if os.path.exists(CONFIG_FILE):
+        with open(CONFIG_FILE, 'r') as f:
+            return json.load(f)
+    return {}
+
+def save_config(config):
+    with open(CONFIG_FILE, 'w') as f:
+        json.dump(config, f)
+
+config = load_config()
 import anthropic
 import asyncio
 import requests
@@ -64,10 +79,12 @@ async def on_ready():
 
 async def event_notification():
     await client.wait_until_ready()
-    channel = client.get_channel(1513838887758463059)
-    ranking_channel = client.get_channel(1513838887758463059)  #チャンネルIDは仮
     while not client.is_closed():
-        now = datetime.now(timezone.utc)  # UTCに変更
+        now = datetime.now(timezone.utc)
+        channel_id = config.get('event_channel')
+        ranking_channel_id = config.get('ranking_channel')
+        channel = client.get_channel(channel_id) if channel_id else None
+        ranking_channel = client.get_channel(ranking_channel_id) if ranking_channel_id else None
         print(f'UTC時刻: {now.hour}:{now.minute}') 
          # 月初0時（日本時間9時）に集計送信
         if now.day == 1 and now.hour == 0 and now.minute == 0:
@@ -77,7 +94,8 @@ async def event_notification():
                     msg += f'・{name}：{count}件\n'
             else:
                 msg = '今月は対象ロールの書き込みがありませんでした'
-            await ranking_channel.send(msg)  # ← channelからranking_channelに変更
+            if ranking_channel: 
+                await ranking_channel.send(msg)
             message_counts.clear()
             await asyncio.sleep(60)
 
@@ -90,7 +108,8 @@ async def event_notification():
                      message += f'・{event}\n'
             else:
                  message += '現在開催中のイベントはありません'
-            await channel.send(message)
+            if channel:
+                await channel.send(message)
             await asyncio.sleep(60) # 1分待って二重送信防止
         # 日本時間9時 = UTC 0時　→　リマインド
         elif now.hour == 0 and now.minute == 0:
@@ -113,7 +132,8 @@ async def event_notification():
                 message = '**【ブルアカ イベント終了リマインド】**\n'
                 for r in reminders:
                     message += f'・{r}\n'
-                await channel.send(message)
+                if channel:
+                    await channel.send(message)
             await asyncio.sleep(60)
         
         else:
@@ -123,14 +143,17 @@ async def event_notification():
 async def on_message(message):
     if message.author == client.user:
         return
+    
     # 特定ロールを持つユーザーのメッセージをカウント
     if hasattr(message.author, 'roles'):
         role_ids = [role.id for role in message.author.roles]
         if TARGET_ROLE_ID in role_ids:
             name = message.author.display_name
             message_counts[name] = message_counts.get(name, 0) + 1
+    
     if message.content == '!ping':
         await message.channel.send('pong!')
+    
     elif message.content == '!コマンド':
         msg = '**【使えるコマンド一覧】**\n'
         msg += '・!ping：botが反応するか確認\n'
@@ -138,12 +161,24 @@ async def on_message(message):
         msg += '・!聞く 質問内容：ブルアカに関する質問にAIが回答（例：!聞く 水着ナグサって強い？）\n'
         msg += '・!コマンド：このコマンド一覧を表示'
         await message.channel.send(msg)
+    
+    elif message.content == '!設定 イベント通知':
+        config['event_channel'] = message.channel.id
+        save_config(config)
+        await message.channel.send('このチャンネルをイベント通知用に設定しました！')
+
+    elif message.content == '!設定 ランキング':
+        config['ranking_channel'] = message.channel.id
+        save_config(config)
+        await message.channel.send('このチャンネルをランキング用に設定しました！')
+    
     elif message.content == '!イベント':
         events = get_events()
         message_text = '**【ブルアカ イベント一覧】**\n'
         for event in events:
             message_text += f'・{event}\n'
         await message.channel.send(message_text)
+    
     elif message.content.startswith('!聞く ') or message.content.startswith('!聞く\u3000'):
         print(f'受け取った入力: {repr(message.content)}')  # ←これ追加！
         question = message.content[4:].strip()
