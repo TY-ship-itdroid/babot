@@ -163,7 +163,7 @@ async def on_message(message):
                     # 前の行と結合
                     result[-1] += line
                 else:
-                result.append(line)
+                    result.append(line)
             fullResponse = '\n'.join(result)
             
             fullResponse = re.sub(r'・\n+', '・', fullResponse)
