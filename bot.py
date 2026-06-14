@@ -213,8 +213,21 @@ async def on_message(message):
             ]
         )
         question = format_response.content[0].text.strip()
-        print(f'変換後のキャラ名: {question}')
-        enhanced_question = f'「{question}」※キャラ名は完全一致で検索すること。例えば「水着ナグサ」と「水着ナギサ」は別キャラなので混同しないこと。'
+        format_response = format_claude.messages.create(
+            model='claude-haiku-4-5-20251001',
+            max_tokens=100,
+            system='ユーザーの質問文からブルーアーカイブの生徒キャラ名のみを抽出し、正式名称に変換してください。入力が「衣装名+キャラ名」の形式なら「キャラ名（衣装名）」に変換してください。例：水着ナグサ→ナグサ（水着）、私服ホシノ→ホシノ（私服）。ゲブラ、グレゴリオなどのボス名・コンテンツ名はキャラ名ではないので変換しないでください。質問文にキャラ名が含まれない場合は「なし」と返してください。キャラ名が複数ある場合は全て列挙してください。変換結果以外の文章は出力しないでください。',
+            messages=[
+                 {'role': 'user', 'content': question}
+            ]
+        )
+        character_name = format_response.content[0].text.strip()
+        print(f'抽出したキャラ名: {character_name}')
+
+        if character_name == 'なし':
+            enhanced_question = f'{question}'
+        else:
+            enhanced_question = f'{question}　※キャラ名「{character_name}」は完全一致で検索すること。例えば「水着ナグサ」と「水着ナギサ」は別キャラなので混同しないこと。'
         async with message.channel.typing():
             claude = anthropic.Anthropic(api_key=os.environ['ANTHROPIC_API_KEY'])
             response = claude.messages.create(
