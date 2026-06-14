@@ -145,9 +145,10 @@ async def on_message(message):
         return
     
     # 特定ロールを持つユーザーのメッセージをカウント
+    target_role_id = config.get('target_role', TARGET_ROLE_ID)
     if hasattr(message.author, 'roles'):
         role_ids = [role.id for role in message.author.roles]
-        if TARGET_ROLE_ID in role_ids:
+        if target_role_id in role_ids:
             name = message.author.display_name
             message_counts[name] = message_counts.get(name, 0) + 1
     
@@ -172,6 +173,15 @@ async def on_message(message):
         save_config(config)
         await message.channel.send('このチャンネルをランキング用に設定しました！')
     
+    elif message.content.startswith('!設定 集計ロール'):  # ← ここに追加
+        if message.role_mentions:
+            role = message.role_mentions[0]
+            config['target_role'] = role.id
+            save_config(config)
+            await message.channel.send(f'集計対象ロールを「{role.name}」に設定しました！')
+        else:
+            await message.channel.send('ロールをメンションして指定してください（例：!設定 集計ロール @メンバー）')
+
     elif message.content == '!イベント':
         events = get_events()
         message_text = '**【ブルアカ イベント一覧】**\n'
