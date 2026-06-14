@@ -5,6 +5,7 @@ from dotenv import load_dotenv
 load_dotenv()
 import discord
 import json
+import random
 
 CONFIG_FILE = 'config.json'
 
@@ -199,10 +200,22 @@ async def on_message(message):
         await message.channel.send(message_text)
     
     elif message.content.startswith('!聞く ') or message.content.startswith('!聞く\u3000'):
-        print(f'受け取った入力: {repr(message.content)}')  # ←これ追加！
+        print(f'受け取った入力: {repr(message.content)}')
         question = message.content[4:].strip()
+
+        # NGワードチェック
+        ng_words = ['えっち', 'エッチ', 'セックス', 'sex', 'SEX', 'シコれ', 'しこれ']  # 必要に応じて追加
+        if any(ng in question for ng in ng_words):
+            responses = [
+                'その質問、ふしだらすぎないかしら？',
+                'そういうのはダメ！',
+                'もしもしヴァルキューレ？',
+            ]
+            await message.channel.send(random.choice(responses))
+            return
+            
         question = question.replace('(', '（').replace(')', '）')
-        print(f'変換前のquestion: {repr(question)}')  # ←これも追加！
+        print(f'変換前のquestion: {repr(question)}')
         format_claude = anthropic.Anthropic(api_key=os.environ['ANTHROPIC_API_KEY'])
         format_response = format_claude.messages.create(
             model='claude-haiku-4-5-20251001',
@@ -233,8 +246,7 @@ async def on_message(message):
             response = claude.messages.create(
                 model='claude-haiku-4-5-20251001',
                 max_tokens=1000,
-                system='あなたはブルーアーカイブのサークルDiscordサーバーのアシスタントBotです。ブルアカに関する質問に答えてください。必ずweb検索で最新情報を調べてから答えてください。キャラ名が含まれる場合は正式名称で検索し、似た名前のキャラと混同しないよう注意してください。知らないことや不確かなことは「わかりません」と答えてください。回答はDiscordのチャット向けにシンプルな形式で書いてください。箇条書きは「・テキスト」の形式で改行なしで書いてください。見出しは「**〇〇**」の形式にしてください。回答の最初に「確認します」「調べます」などの前置きは不要です。同じ内容を繰り返さないでください。「お気軽にどうぞ」などの締めの文は不要です。結論から簡潔に答えてください。',
-                messages=[
+                system='あなたはブルーアーカイブのサークルDiscordサーバーのアシスタントBotです。ブルアカに関する質問に答えてください。必ずweb検索で最新情報を調べてから答えてください。キャラ名が含まれる場合は正式名称で検索し、似た名前のキャラと混同しないよう注意してください。知らないことや不確かなことは「わかりません」と答えてください。質問の意図に応じて回答内容を変えてください。「強い？」など強さを聞かれた場合は性能評価を、「活躍場所は？」「どこで使える？」など使い道を聞かれた場合はおすすめのコンテンツ・ステージを、「可愛い？」など見た目や魅力を聞かれた場合は性能の話はせず見た目やキャラクター性について答えてください。回答はDiscordのチャット向けにシンプルな形式で書いてください。箇条書きは「・テキスト」の形式で改行なしで書いてください。見出しは「**〇〇**」の形式にしてください。回答の最初に「確認します」「調べます」などの前置きは不要です。同じ内容を繰り返さないでください。「お気軽にどうぞ」などの締めの文は不要です。結論から簡潔に答えてください。',
                     {'role': 'user', 'content': enhanced_question}
                 ],
                 tools=[
