@@ -153,8 +153,22 @@ async def on_message(message):
                 item.text for item in response.content
                 if hasattr(item, 'text')
             )
+            # 箇条書きや見出しじゃない行の改行をスペースに変換
+            lines = fullResponse.split('\n')
+            result = []
+            for i, line in enumerate(lines):
+                if line.startswith('・') or line.startswith('**') or line.strip() == '':
+                    result.append(line)
+            elif i > 0 and result and not result[-1].startswith('・') and not result[-1].startswith('**') and result[-1].strip() != '':
+                # 前の行と結合
+                result[-1] += line
+            else:
+                result.append(line)
+                fullResponse = '\n'.join(result)
+            
             fullResponse = re.sub(r'・\n+', '・', fullResponse)
             fullResponse = re.sub(r'\n{3,}', '\n\n', fullResponse)
+
             print(fullResponse)
             await message.channel.send(fullResponse)
 
