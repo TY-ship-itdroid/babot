@@ -130,6 +130,13 @@ async def on_message(message):
             message_counts[name] = message_counts.get(name, 0) + 1
     if message.content == '!ping':
         await message.channel.send('pong!')
+    elif message.content == '!コマンド':
+        msg = '**【使えるコマンド一覧】**\n'
+        msg += '・!ping：botが反応するか確認\n'
+        msg += '・!イベント：現在開催中のイベント一覧を表示\n'
+        msg += '・!聞く 質問内容：ブルアカに関する質問にAIが回答（例：!聞く 水着ナグサって強い？）\n'
+        msg += '・!コマンド：このコマンド一覧を表示'
+        await message.channel.send(msg)
     elif message.content == '!イベント':
         events = get_events()
         message_text = '**【ブルアカ イベント一覧】**\n'
