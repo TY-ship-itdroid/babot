@@ -65,7 +65,7 @@ async def on_ready():
 async def event_notification():
     await client.wait_until_ready()
     channel = client.get_channel(1513838887758463059)
-    ranking_channel = client.get_channel(1513838887758463059) 　#チャンネルIDは仮
+    ranking_channel = client.get_channel(1513838887758463059)  #チャンネルIDは仮
     while not client.is_closed():
         now = datetime.now(timezone.utc)  # UTCに変更
         print(f'UTC時刻: {now.hour}:{now.minute}') 
