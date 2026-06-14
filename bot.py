@@ -20,6 +20,16 @@ def save_config(config):
         json.dump(config, f)
 
 config = load_config()
+ALIASES_FILE = 'aliases.json'
+
+def load_aliases():
+    if os.path.exists(ALIASES_FILE):
+        with open(ALIASES_FILE, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    return {}
+
+aliases = load_aliases()
+
 import anthropic
 import asyncio
 import requests
@@ -215,6 +225,11 @@ async def on_message(message):
             return
 
         question = question.replace('(', '（').replace(')', '）')
+        # 愛称変換
+        for alias, official_name in aliases.items():
+            if alias in question:
+                question = question.replace(alias, official_name)
+                print(f'愛称変換: {alias} → {official_name}')
         print(f'変換前のquestion: {repr(question)}')
         format_claude = anthropic.Anthropic(api_key=os.environ['ANTHROPIC_API_KEY'])
         format_response = format_claude.messages.create(
