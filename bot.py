@@ -68,8 +68,20 @@ async def event_notification():
     while not client.is_closed():
         now = datetime.now(timezone.utc)  # UTCに変更
         print(f'UTC時刻: {now.hour}:{now.minute}') 
+         # 月初0時（日本時間9時）に集計送信
+        if now.day == 1 and now.hour == 0 and now.minute == 0:
+            if message_counts:
+                msg = '**【今月の書き込み件数ランキング】**\n'
+                for name, count in message_counts.items():
+                    msg += f'・{name}：{count}件\n'
+            else:
+                msg = '今月は対象ロールの書き込みがありませんでした'
+            await channel.send(msg)
+            message_counts.clear()
+            await asyncio.sleep(60)
+
         # 日本時間12時 = UTC 3時
-        if now.hour == 3 and now.minute == 00:
+        elif now.hour == 3 and now.minute == 00:
             events = get_events()
             message = '**【ブルアカ イベント一覧】**\n'
             if events:
@@ -102,17 +114,7 @@ async def event_notification():
                     message += f'・{r}\n'
                 await channel.send(message)
             await asyncio.sleep(60)
-         # 月初0時（日本時間9時）に集計送信
-        elif now.day == 1 and now.hour == 0 and now.minute == 0:
-            if message_counts:
-                msg = '**【今月の書き込み件数ランキング】**\n'
-                for name, count in message_counts.items():
-                    msg += f'・{name}：{count}件\n'
-            else:
-                msg = '今月は対象ロールの書き込みがありませんでした'
-            await channel.send(msg)
-            message_counts.clear()
-            await asyncio.sleep(60)
+        
         else:
             await asyncio.sleep(300)  # 300秒ごとに時刻チェック
 
