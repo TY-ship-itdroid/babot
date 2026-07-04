@@ -96,7 +96,7 @@ async def event_notification():
         ranking_channel_id = config.get('ranking_channel')
         channel = client.get_channel(channel_id) if channel_id else None
         ranking_channel = client.get_channel(ranking_channel_id) if ranking_channel_id else None
-        print(f'UTC時刻: {now.hour}:{now.minute}') 
+        print(f'UTC時刻: {now.hour}:{now.minute}')
         # 月初0時（日本時間9時）に集計送信
         if now.day == 1 and now.hour == 0 and now.minute == 0:
             if message_counts:
