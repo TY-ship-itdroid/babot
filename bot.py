@@ -37,6 +37,38 @@ from bs4 import BeautifulSoup
 STUDENTS_FILE = 'students.json'
 STUDENTS_URL = 'https://bluearchive.wikiru.jp/?キャラクター一覧'
 
+# !聞くで弾くNGワード。カテゴリごとに該当語と返答を分け、ヒットしたらAPIを呼ばずに即返信する
+NG_CATEGORIES = {
+    'sexual': {
+        'words': ['えっち', 'エッチ', 'セックス', 'sex', 'SEX', 'シコれ', 'しこれ'],
+        'responses': [
+            'その質問、ふしだらすぎないかしら？',
+            'そういうのはダメ！',
+            'もしもしヴァルキューレ？',
+        ],
+    },
+    'political': {
+        'words': [
+            '自民党', '立憲民主党', '公明党', '共産党', '維新の会', '国民民主党', '参政党',
+            '総理大臣', '内閣総理大臣', '総選挙', '衆院選', '参院選', '政治家', '大統領選',
+        ],
+        'responses': [
+            '政治の話はここではちょっと……ブルアカの話をしましょ？',
+            'それは先生の管轄外かしら。ゲームの話をしましょう！',
+        ],
+    },
+}
+
+# !聞くの本回答用systemプロンプト。キャラ名が特定できた場合だけweb_searchを渡すので、
+# 「検索すること」という指示も渡す/渡さないで出し分ける（ツールが無いのに検索を強制すると空回りする）
+_ANSWER_SYSTEM_INTRO = 'あなたはブルーアーカイブのサークルDiscordサーバーのアシスタントBotです。ブルアカに関する質問に答えてください。日本語で回答すること。'
+_ANSWER_SYSTEM_SEARCH_INSTRUCTION = '情報を調べる際は必ず最初に「ブルーアーカイブ キャラ名 wiki」の形式で検索すること。キャラ名が含まれる場合は正式名称で検索し、似た名前のキャラと混同しないよう注意してください。'
+_ANSWER_SYSTEM_NO_SEARCH_INSTRUCTION = 'この質問にはキャラ名が含まれていないため検索は行わず、あなたの知識の範囲で答えてください。'
+_ANSWER_SYSTEM_TAIL = '知らないことや不確かなことは「わかりません」と答えてください。質問の意図に応じて回答内容を変えてください。「強い？」など強さを聞かれた場合は性能評価を、「活躍場所は？」「どこで使える？」など使い道を聞かれた場合はおすすめのコンテンツ・ステージを、「可愛い？」など見た目や魅力を聞かれた場合は性能の話はせず見た目やキャラクター性について答えてください。回答はDiscordのチャット向けにシンプルな形式で書いてください。箇条書きは「・テキスト」の形式で改行なしで書いてください。見出しは「**〇〇**」の形式にしてください。回答の最初に「確認します」「調べます」などの前置きは不要です。同じ内容を繰り返さないでください。「お気軽にどうぞ」などの締めの文は不要です。結論から簡潔に答えてください。'
+
+ANSWER_SYSTEM_PROMPT_WITH_SEARCH = _ANSWER_SYSTEM_INTRO + _ANSWER_SYSTEM_SEARCH_INSTRUCTION + _ANSWER_SYSTEM_TAIL
+ANSWER_SYSTEM_PROMPT_NO_SEARCH = _ANSWER_SYSTEM_INTRO + _ANSWER_SYSTEM_NO_SEARCH_INSTRUCTION + _ANSWER_SYSTEM_TAIL
+
 # ユーザーがよく使う衣装の略称 → wiki上の正式な衣装タグ
 COSTUME_ALIASES = {
     '水着': '水着', '水': '水着',
@@ -329,16 +361,12 @@ async def on_message(message):
         print(f'受け取った入力: {repr(message.content)}')
         question = message.content[4:].strip()
 
-        # NGワードチェック
-        ng_words = ['えっち', 'エッチ', 'セックス', 'sex', 'SEX', 'シコれ', 'しこれ']  # 必要に応じて追加
-        if any(ng in question for ng in ng_words):
-            responses = [
-                'その質問、ふしだらすぎないかしら？',
-                'そういうのはダメ！',
-                'もしもしヴァルキューレ？',
-            ]
-            await message.channel.send(random.choice(responses))
-            return
+        # NGワードチェック（カテゴリごとに判定し、該当したらAPIを呼ばずに注意を返す）
+        for category, ng in NG_CATEGORIES.items():
+            if any(word in question for word in ng['words']):
+                print(f'NGワード検出（{category}）')
+                await message.channel.send(random.choice(ng['responses']))
+                return
 
         question = question.replace('(', '（').replace(')', '）')
         # あだ名・略称（aliases.jsonの不規則なものと、衣装略称＋キャラ名の規則的なもの）をローカルで正式名称に変換
@@ -368,32 +396,39 @@ async def on_message(message):
             print(f'抽出したキャラ名: {character_name}')
 
         if character_name == 'なし':
+            # キャラ名が特定できない質問はweb_search抜きで答える（検索コストの削減）
             enhanced_question = f'{question}'
+            answer_system_prompt = ANSWER_SYSTEM_PROMPT_NO_SEARCH
+            answer_tools = None
         else:
             enhanced_question = f'{question}　※キャラ名「{character_name}」は完全一致で検索すること。検索する際は「ブルーアーカイブ {character_name} wiki」で検索すること。例えば「水着ナグサ」と「水着ナギサ」は別キャラなので混同しないこと。'
+            answer_system_prompt = ANSWER_SYSTEM_PROMPT_WITH_SEARCH
+            answer_tools = [
+                {
+                    'type': 'web_search_20250305',
+                    'name': 'web_search',
+                    'max_uses': 1
+                }
+            ]
         async with message.channel.typing():
             claude = anthropic.Anthropic(api_key=os.environ['ANTHROPIC_API_KEY'])
-            response = claude.messages.create(
+            create_kwargs = dict(
                 model='claude-haiku-4-5-20251001',
                 max_tokens=1000,
                 system=[
                     {
                         'type': 'text',
-                        'text': 'あなたはブルーアーカイブのサークルDiscordサーバーのアシスタントBotです。ブルアカに関する質問に答えてください。情報を調べる際は必ず最初に「ブルーアーカイブ キャラ名 wiki」の形式で検索すること。日本語で回答すること。キャラ名が含まれる場合は正式名称で検索し、似た名前のキャラと混同しないよう注意してください。知らないことや不確かなことは「わかりません」と答えてください。質問の意図に応じて回答内容を変えてください。「強い？」など強さを聞かれた場合は性能評価を、「活躍場所は？」「どこで使える？」など使い道を聞かれた場合はおすすめのコンテンツ・ステージを、「可愛い？」など見た目や魅力を聞かれた場合は性能の話はせず見た目やキャラクター性について答えてください。回答はDiscordのチャット向けにシンプルな形式で書いてください。箇条書きは「・テキスト」の形式で改行なしで書いてください。見出しは「**〇〇**」の形式にしてください。回答の最初に「確認します」「調べます」などの前置きは不要です。同じ内容を繰り返さないでください。「お気軽にどうぞ」などの締めの文は不要です。結論から簡潔に答えてください。',  # 今のsystemプロンプト
+                        'text': answer_system_prompt,
                         'cache_control': {'type': 'ephemeral'}
                     }
                 ],
                 messages=[
                     {'role': 'user', 'content': enhanced_question}
                 ],
-                tools=[
-                    {
-                        'type': 'web_search_20250305',
-                        'name': 'web_search',
-                        'max_uses': 1
-                    }
-                ]
             )
+            if answer_tools:
+                create_kwargs['tools'] = answer_tools
+            response = claude.messages.create(**create_kwargs)
             fullResponse = '\n'.join(
                 item.text for item in response.content
                 if hasattr(item, 'text')
