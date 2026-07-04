@@ -97,7 +97,7 @@ async def event_notification():
         channel = client.get_channel(channel_id) if channel_id else None
         ranking_channel = client.get_channel(ranking_channel_id) if ranking_channel_id else None
         print(f'UTC時刻: {now.hour}:{now.minute}') 
-         # 月初0時（日本時間9時）に集計送信
+        # 月初0時（日本時間9時）に集計送信
         if now.day == 1 and now.hour == 0 and now.minute == 0:
             if message_counts:
                 msg = '**【今月の書き込み件数ランキング】**\n'
