@@ -267,7 +267,7 @@ async def on_message(message):
                     {
                         'type': 'web_search_20250305',
                         'name': 'web_search',
-                        'max_uses': 2
+                        'max_uses': 1
                     }
                 ]
             )
