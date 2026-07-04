@@ -30,11 +30,121 @@ def load_aliases():
 
 aliases = load_aliases()
 
-import anthropic
-import asyncio
 import requests
 import re
 from bs4 import BeautifulSoup
+
+STUDENTS_FILE = 'students.json'
+STUDENTS_URL = 'https://bluearchive.wikiru.jp/?キャラクター一覧'
+
+# ユーザーがよく使う衣装の略称 → wiki上の正式な衣装タグ
+COSTUME_ALIASES = {
+    '水着': '水着', '水': '水着',
+    '私服': '私服', '私': '私服',
+    '体操服': '体操服', '体': '体操服',
+    'ドレス': 'ドレス', 'ド': 'ドレス',
+    'アイドル': 'アイドル', 'ドル': 'アイドル',
+    'メイド': 'メイド', 'メ': 'メイド',
+    'パジャマ': 'パジャマ', 'パ': 'パジャマ',
+    'キャンプ': 'キャンプ', 'キャン': 'キャンプ',
+    'クリスマス': 'クリスマス', 'クリ': 'クリスマス',
+    '正月': '正月', '正': '正月',
+    '臨戦': '臨戦', '臨': '臨戦',
+    'バニーガール': 'バニーガール', 'バニー': 'バニーガール',
+    'アルバイト': 'アルバイト', 'バイト': 'アルバイト',
+    'ライディング': 'ライディング',
+    'チーパオ': 'チーパオ',
+    'マジカル': 'マジカル',
+    'バンド': 'バンド',
+    'ガイド': 'ガイド',
+    '幼女': '幼女',
+    '応援団': '応援団', '応援': '応援団',
+    '温泉': '温泉',
+}
+
+def fetch_students():
+    response = requests.get(STUDENTS_URL)
+    response.encoding = 'utf-8'
+    soup = BeautifulSoup(response.text, 'html.parser')
+    body = soup.find(id='body')
+    table = body.find('table')
+
+    students = {}
+    seen = set()
+    for link in table.find_all('a'):
+        name = link.get_text(strip=True)
+        if not name or name in ('追加', '編集') or name in seen:
+            continue
+        seen.add(name)
+        match = re.match(r'^(.+?)（(.+)）$', name)
+        if match:
+            base, costume = match.group(1), match.group(2)
+        else:
+            base, costume = name, None
+        students.setdefault(base, set())
+        if costume:
+            students[base].add(costume)
+    return students
+
+def load_students():
+    if os.path.exists(STUDENTS_FILE):
+        with open(STUDENTS_FILE, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+        return {base: set(costumes) for base, costumes in data.items()}
+    return {}
+
+def save_students(students):
+    with open(STUDENTS_FILE, 'w', encoding='utf-8') as f:
+        json.dump({base: sorted(costumes) for base, costumes in students.items()}, f, ensure_ascii=False)
+
+students = load_students()
+
+def refresh_students():
+    global students
+    try:
+        fetched = fetch_students()
+        if fetched:
+            students = fetched
+            save_students(students)
+            print(f'生徒リストを更新しました: {len(students)}件')
+    except Exception as e:
+        print(f'生徒リストの取得に失敗しました: {e}')
+
+if not students:
+    refresh_students()
+
+def build_name_candidates():
+    """aliases.json（不規則な省略形）と、衣装略称×生徒名から機械的に組み立てた
+    候補（例：水ナグサ→ナグサ（水着））をまとめ、パターンが長い順に並べる。
+    長い一致を優先しないと、「水ナグサ」が短い別名「水ナ」（→イズナ（水着））に
+    部分一致して誤変換されてしまう。"""
+    candidates = list(aliases.items())
+    for abbrev, costume in COSTUME_ALIASES.items():
+        for base, costumes in students.items():
+            if costume not in costumes:
+                continue
+            official = f'{base}（{costume}）'
+            candidates.append((abbrev + base, official))
+            candidates.append((base + abbrev, official))
+    candidates.sort(key=lambda pair: len(pair[0]), reverse=True)
+    return candidates
+
+def normalize_character_references(question):
+    """質問文中のキャラのあだ名・略称をローカルだけで正式名称に変換する。
+    ここで解決できなければ呼び出し側がClaudeでの抽出にフォールバックする。"""
+    result = question
+    matched = []
+    for pattern, official in build_name_candidates():
+        if official in result:
+            continue
+        if pattern in result:
+            result = result.replace(pattern, official)
+            if official not in matched:
+                matched.append(official)
+    return result, matched
+
+import anthropic
+import asyncio
 from datetime import datetime, timezone
 
 intents = discord.Intents.default()
@@ -147,7 +257,12 @@ async def event_notification():
                 if channel:
                     await channel.send(message)
             await asyncio.sleep(60)
-        
+
+        # 生徒・衣装一覧の更新（UTC 6時）
+        elif now.hour == 6 and now.minute == 0:
+            refresh_students()
+            await asyncio.sleep(60)
+
         else:
             await asyncio.sleep(300)  # 300秒ごとに時刻チェック
 
@@ -226,23 +341,31 @@ async def on_message(message):
             return
 
         question = question.replace('(', '（').replace(')', '）')
-        # 愛称変換
-        for alias, official_name in aliases.items():
-            if alias in question:
-                question = question.replace(alias, official_name)
-                print(f'愛称変換: {alias} → {official_name}')
+        # あだ名・略称（aliases.jsonの不規則なものと、衣装略称＋キャラ名の規則的なもの）をローカルで正式名称に変換
+        question, matched_names = normalize_character_references(question)
         print(f'変換前のquestion: {repr(question)}')
-        format_claude = anthropic.Anthropic(api_key=os.environ['ANTHROPIC_API_KEY'])
-        format_response = format_claude.messages.create(
-            model='claude-haiku-4-5-20251001',
-            max_tokens=100,
-            system='ユーザーの質問文からブルーアーカイブの生徒キャラ名のみを抽出し、正式名称に変換してください。入力が「衣装名+キャラ名」の形式なら「キャラ名（衣装名）」に変換してください。例：水着ナグサ→ナグサ（水着）、私服ホシノ→ホシノ（私服）。ゲブラ、グレゴリオなどのボス名・コンテンツ名はキャラ名ではないので変換しないでください。質問文にキャラ名が含まれない場合は「なし」と返してください。キャラ名が複数ある場合は全て列挙してください。変換結果以外の文章は出力しないでください。',
-            messages=[
-                 {'role': 'user', 'content': question}
-            ]
-        )
-        character_name = format_response.content[0].text.strip()
-        print(f'抽出したキャラ名: {character_name}')
+
+        if matched_names:
+            character_name = '、'.join(matched_names)
+            print(f'ルールベースで変換したキャラ名: {character_name}')
+        else:
+            format_claude = anthropic.Anthropic(api_key=os.environ['ANTHROPIC_API_KEY'])
+            format_response = format_claude.messages.create(
+                model='claude-haiku-4-5-20251001',
+                max_tokens=100,
+                system=[
+                    {
+                        'type': 'text',
+                        'text': 'ユーザーの質問文からブルーアーカイブの生徒キャラ名のみを抽出し、正式名称に変換してください。入力が「衣装名+キャラ名」の形式なら「キャラ名（衣装名）」に変換してください。例：水着ナグサ→ナグサ（水着）、私服ホシノ→ホシノ（私服）。ゲブラ、グレゴリオなどのボス名・コンテンツ名はキャラ名ではないので変換しないでください。質問文にキャラ名が含まれない場合は「なし」と返してください。キャラ名が複数ある場合は全て列挙してください。変換結果以外の文章は出力しないでください。',
+                        'cache_control': {'type': 'ephemeral'}
+                    }
+                ],
+                messages=[
+                     {'role': 'user', 'content': question}
+                ]
+            )
+            character_name = format_response.content[0].text.strip()
+            print(f'抽出したキャラ名: {character_name}')
 
         if character_name == 'なし':
             enhanced_question = f'{question}'
