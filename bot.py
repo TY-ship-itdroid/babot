@@ -6,6 +6,7 @@ load_dotenv()
 import discord
 import json
 import random
+import time
 
 CONFIG_FILE = 'config.json'
 
@@ -20,6 +21,15 @@ def save_config(config):
         json.dump(config, f)
 
 config = load_config()
+
+def has_admin_permission(message):
+    """!設定系コマンドを実行してよいかどうか。サーバーの「サーバー管理」権限を持つ人のみ許可する。"""
+    return hasattr(message.author, 'guild_permissions') and message.author.guild_permissions.manage_guild
+
+# !聞くの連投防止（ユーザーIDごとに最後に使った時刻を記録）
+ASK_COOLDOWN_SECONDS = 15
+last_asked_at = {}
+
 ALIASES_FILE = 'aliases.json'
 
 def load_aliases():
@@ -323,16 +333,25 @@ async def on_message(message):
         await message.channel.send(msg)
     
     elif message.content == '!設定 イベント通知':
+        if not has_admin_permission(message):
+            await message.channel.send('このコマンドは「サーバー管理」権限を持つ人のみ使えます。')
+            return
         config['event_channel'] = message.channel.id
         save_config(config)
         await message.channel.send('このチャンネルをイベント通知用に設定しました！')
 
     elif message.content == '!設定 ランキング':
+        if not has_admin_permission(message):
+            await message.channel.send('このコマンドは「サーバー管理」権限を持つ人のみ使えます。')
+            return
         config['ranking_channel'] = message.channel.id
         save_config(config)
         await message.channel.send('このチャンネルをランキング用に設定しました！')
-    
+
     elif message.content.startswith('!設定 集計ロール'):  # ← ここに追加
+        if not has_admin_permission(message):
+            await message.channel.send('このコマンドは「サーバー管理」権限を持つ人のみ使えます。')
+            return
         if message.role_mentions:
             role = message.role_mentions[0]
             config['target_role'] = role.id
@@ -358,6 +377,15 @@ async def on_message(message):
         await message.channel.send(message_text)
     
     elif message.content.startswith('!聞く ') or message.content.startswith('!聞く\u3000'):
+        # 連投防止：ユーザーごとにクールダウンを設ける（APIコストの無限増加を防ぐ）
+        now_ts = time.time()
+        elapsed = now_ts - last_asked_at.get(message.author.id, 0)
+        if elapsed < ASK_COOLDOWN_SECONDS:
+            remaining = int(ASK_COOLDOWN_SECONDS - elapsed) + 1
+            await message.channel.send(f'質問は{ASK_COOLDOWN_SECONDS}秒に1回までです。あと{remaining}秒待ってね。')
+            return
+        last_asked_at[message.author.id] = now_ts
+
         print(f'受け取った入力: {repr(message.content)}')
         question = message.content[4:].strip()
 
