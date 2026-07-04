@@ -92,7 +92,7 @@ async def event_notification():
     await client.wait_until_ready()
     while not client.is_closed():
         now = datetime.now(timezone.utc)
-        channel_id = config.get('event_channel')
+        channel_id = config.get('event_channel') or int(os.environ.get('EVENT_CHANNEL_ID', 0))
         ranking_channel_id = config.get('ranking_channel')
         channel = client.get_channel(channel_id) if channel_id else None
         ranking_channel = client.get_channel(ranking_channel_id) if ranking_channel_id else None
