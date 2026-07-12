@@ -242,71 +242,81 @@ async def on_ready():
 
 async def event_notification():
     await client.wait_until_ready()
-    while not client.is_closed():
-        now = datetime.now(timezone.utc)
-        channel_id = config.get('event_channel') or int(os.environ.get('EVENT_CHANNEL_ID', 0))
-        print(f'チャンネルID: {channel_id}')
-        ranking_channel_id = config.get('ranking_channel')
-        channel = client.get_channel(channel_id) if channel_id else None
-        ranking_channel = client.get_channel(ranking_channel_id) if ranking_channel_id else None
-        print(f'UTC時刻: {now.hour}:{now.minute}')
-        # 月初0時（日本時間9時）に集計送信
-        if now.day == 1 and now.hour == 0 and now.minute == 0:
-            if message_counts:
-                msg = '**【今月の書き込み件数ランキング】**\n'
-                for name, count in message_counts.items():
-                    msg += f'・{name}：{count}件\n'
-            else:
-                msg = '今月は対象ロールの書き込みがありませんでした'
-            if ranking_channel: 
-                await ranking_channel.send(msg)
-            message_counts.clear()
-            await asyncio.sleep(60)
+    # 各定期送信を「今日もう送ったか」で管理する（ポーリング間隔とちょうど時刻がズレて
+    # 条件を一生踏まない事故を防ぐため、分ぴったりの一致ではなく日付単位で判定する）
+    last_ranking_date = None
+    last_event_date = None
+    last_reminder_date = None
+    last_refresh_date = None
 
-        # 日本時間12時 = UTC 3時
-        elif now.hour == 3 and now.minute == 00:
-            events = get_events()
-            message = '**【ブルアカ イベント一覧】**\n'
-            if events:
-                 for event in events:
-                     message += f'・{event}\n'
-            else:
-                 message += '現在開催中のイベントはありません'
-            if channel:
-                await channel.send(message)
-            await asyncio.sleep(60) # 1分待って二重送信防止
-        # 日本時間9時 = UTC 0時　→　リマインド
-        elif now.hour == 0 and now.minute == 0:
-            events = get_events()
-            reminders = []
-            today = datetime.now(timezone.utc)
-            for event in events:
-                # イベント名から終了日を取り出す（例：～6/24）
-                match = re.search(r'～(\d+)/(\d+)', event)
-                if match:
-                    end_month = int(match.group(1))
-                    end_day = int(match.group(2))
-                    end_date = datetime(today.year, end_month, end_day, tzinfo=timezone.utc)
-                    days_left = (end_date - today).days
-                    if days_left == 1:
-                        reminders.append(f'⚠️ {event}　**明日終了！**')
-                    elif days_left == 2:
-                        reminders.append(f'📢 {event}　**あと2日！**')
-            if reminders:
-                message = '**【ブルアカ イベント終了リマインド】**\n'
-                for r in reminders:
-                    message += f'・{r}\n'
+    while not client.is_closed():
+        try:
+            now = datetime.now(timezone.utc)
+            today = now.date()
+            channel_id = config.get('event_channel') or int(os.environ.get('EVENT_CHANNEL_ID', 0))
+            ranking_channel_id = config.get('ranking_channel')
+            channel = client.get_channel(channel_id) if channel_id else None
+            ranking_channel = client.get_channel(ranking_channel_id) if ranking_channel_id else None
+
+            # 月初0時（日本時間9時）に集計送信
+            if now.day == 1 and now.hour == 0 and last_ranking_date != today:
+                if message_counts:
+                    msg = '**【今月の書き込み件数ランキング】**\n'
+                    for name, count in message_counts.items():
+                        msg += f'・{name}：{count}件\n'
+                else:
+                    msg = '今月は対象ロールの書き込みがありませんでした'
+                if ranking_channel:
+                    await ranking_channel.send(msg)
+                message_counts.clear()
+                last_ranking_date = today
+
+            # 日本時間12時 = UTC 3時
+            if now.hour == 3 and last_event_date != today:
+                events = get_events()
+                message = '**【ブルアカ イベント一覧】**\n'
+                if events:
+                    for event in events:
+                        message += f'・{event}\n'
+                else:
+                    message += '現在開催中のイベントはありません'
                 if channel:
                     await channel.send(message)
-            await asyncio.sleep(60)
+                last_event_date = today
 
-        # 生徒・衣装一覧の更新（UTC 6時）
-        elif now.hour == 6 and now.minute == 0:
-            refresh_students()
-            await asyncio.sleep(60)
+            # 日本時間9時 = UTC 0時　→　リマインド
+            if now.hour == 0 and last_reminder_date != today:
+                events = get_events()
+                reminders = []
+                for event in events:
+                    # イベント名から終了日を取り出す（例：～6/24）
+                    match = re.search(r'～(\d+)/(\d+)', event)
+                    if match:
+                        end_month = int(match.group(1))
+                        end_day = int(match.group(2))
+                        end_date = datetime(now.year, end_month, end_day, tzinfo=timezone.utc)
+                        days_left = (end_date - now).days
+                        if days_left == 1:
+                            reminders.append(f'⚠️ {event}　**明日終了！**')
+                        elif days_left == 2:
+                            reminders.append(f'📢 {event}　**あと2日！**')
+                if reminders:
+                    message = '**【ブルアカ イベント終了リマインド】**\n'
+                    for r in reminders:
+                        message += f'・{r}\n'
+                    if channel:
+                        await channel.send(message)
+                last_reminder_date = today
 
-        else:
-            await asyncio.sleep(300)  # 300秒ごとに時刻チェック
+            # 生徒・衣装一覧の更新（UTC 6時）
+            if now.hour == 6 and last_refresh_date != today:
+                refresh_students()
+                last_refresh_date = today
+        except Exception as e:
+            # ここで例外を握りつぶさないと、一度のエラーで定期送信タスクが永久に止まる
+            print(f'event_notification でエラーが発生しました: {e}')
+
+        await asyncio.sleep(300)
 
 @client.event
 async def on_message(message):
